@@ -4,14 +4,15 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
-#include <unordered_map>
+#include <unordered_set>
 
 class KeyValueStorage {
 private:
     std::unordered_map<std::string, std::string> storage;
-    std::unordered_map<std::string, bool> adresses;
+    std::unordered_set<std::string> adresses;
     using storage_iterator = typename std::unordered_map<std::string, std::string>::iterator;
 public:
+    //Iterator == storage iterator 
     class Iterator{
         private:
             storage_iterator it_;
@@ -34,26 +35,36 @@ public:
             }
     };
 public:
+    //Returns result of insertion: false - key was already in storage, true - successful insertion
     bool AddEntry(std::string_view key, std::string_view entry) {
         auto status = storage.insert({(std::string)key, (std::string)entry});
         return status.second;
     }
 
+    //Returns value by key. Throws invalid_argument if found nothing
     std::string GetValue(std::string_view key) {
-        auto i = storage.find(std::string(key));
-        if (i == storage.end()){
+        //it == storage.end() if found nothing
+        auto it = storage.find(std::string(key));
+        if (it == storage.end()){
             throw std::invalid_argument("Can't find this key");
         }
-        std::string value (i->second);
+        std::string value (it->second);
         return value;
     }
 
-    std::unordered_map<std::string, bool>& getAdresses(){
+    //Returns set of adresses of gRPC servers
+    std::unordered_set<std::string> getAdresses(){
         return adresses;
     }
 
+    //Adds new adress to set of gRPC servers
     void AddReplicaAdress(std::string_view adress){
-        adresses.insert({(std::string)adress, true});
+        adresses.insert((std::string)adress);
+    }
+
+    //Removes adress from set of gRPC servers
+    void DeleteReplicaAdress(const std::string& adress){
+        adresses.erase(adress);
     }
 
     Iterator begin(){

@@ -34,16 +34,20 @@ public:
             }
     };
 public:
-    void AddEntry(std::string_view key, std::string_view entry) {
-        storage.insert({(std::string)key, (std::string)entry});
+    //Returns result of insertion: false - key was already in storage, true - successful insertion
+    bool AddEntry(std::string_view key, std::string_view entry) {
+        auto status = storage.insert({(std::string)key, (std::string)entry});
+        return status.second;
     }
 
+    //Returns value by key. Throws invalid_argument if found nothing
     std::string GetValue(std::string_view key) {
-        auto i = storage.find(std::string(key));
-        if (i == storage.end()){
+        //it == storage.end() if found nothing
+        auto it = storage.find(std::string(key));
+        if (it == storage.end()){
             throw std::invalid_argument("Can't find this key");
         }
-        std::string value (i->second);
+        std::string value (it->second);
         return value;
     }
 
