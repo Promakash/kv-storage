@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+service KeyValueGRPC {
+  rpc ReplicateEntry(ReplicateEntryRequest) returns (ReplicateEntryResponse) {}
+  rpc JoinCluster(JoinClusterRequest) returns (JoinClusterResponse) {}
+}
+
+message JoinClusterResponse{
+  repeated string keys = 1;
+  repeated string values = 2;
+  repeated string ip_adresses = 3;
+}
+
+message JoinClusterRequest {
+  string ip_adress = 1;
+}
+
+message ReplicateEntryRequest {
+  string key = 1;
+  string value = 2;
+}
+
+message ReplicateEntryResponse {
+  bool result = 1;
+}

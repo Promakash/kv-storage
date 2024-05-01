@@ -1,0 +1,1 @@
+add_executable_test(test_sum test.cpp sum.h)
