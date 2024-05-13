@@ -3,6 +3,7 @@ syntax = "proto3";
 service KeyValueGRPC {
   rpc ReplicateEntry(ReplicateEntryRequest) returns (ReplicateEntryResponse) {}
   rpc JoinCluster(JoinClusterRequest) returns (JoinClusterResponse) {}
+  rpc InformCluster(InformClusterRequest) returns (InformClusterResponse) {}
   // rpc DeleteEntry(DeleteEntryRequest) returns (DeleteEntryResponse) {}
 }
 
@@ -33,3 +34,11 @@ message ReplicateEntryResponse {
 // message DeleteEntryResponse {
 //   bool result = 1;
 // }
+
+message InformClusterRequest{
+  string ip_adress = 1;
+}
+
+message InformClusterResponse{
+  bool result = 1;
+}

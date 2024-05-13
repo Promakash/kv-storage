@@ -11,59 +11,64 @@ using grpc::ServerBuilder;
 using grpc::ServerContext;
 
 class KeyValueServiceImpl : public KeyValueGRPC::Service {
+private:
+    KeyValueStorage& Storage_;
+    KeyValueClient& gRPC_Client_;
+    std::string Ip_Address_;
 public:
-    KeyValueServiceImpl(KeyValueStorage& storage, std::string_view ip_adress, KeyValueClient& grpc_client)
-        : storage_(storage), grpc_client_(grpc_client)
+    KeyValueServiceImpl(KeyValueStorage& Storage, const std::string& Ip_Address, KeyValueClient& gRPC_Client)
+        : Storage_(Storage), gRPC_Client_(gRPC_Client)
     {
-        ip_adress_ = ip_adress;
+        Ip_Address_ = Ip_Address;
     }
 
     //Returns storage and adresses of gRPC servers or nothing depending on the context of the request
-    Status JoinCluster(ServerContext* context, const JoinClusterRequest* request, JoinClusterResponse* response) {
+    Status JoinCluster(ServerContext* Context, const JoinClusterRequest* Request, JoinClusterResponse* Response) {
         //Takes ip_adress from request
-        std::string adress_request = request->ip_adress();
+        std::string Address_Request = Request->ip_adress();
 
-        //if ip_adress hasn't special symbol at back ('N'), copy entire storage and adresses of gRPC servers
-        if (adress_request.back() != 'N') {
-            for (const auto& i : storage_) {
-                response->add_keys(i.first);
-                response->add_values(i.second);
-            }
-            auto adresses = storage_.getAdresses();
-            for (const auto& i : adresses) {
-                std::cout << "IP: " << i << std::endl;
-                response->add_ip_adresses(i);
-            }
+        //Forms copy of storage and array of ip's to response
+        for (const auto& i : Storage_) {
+            Response->add_keys(i.first);
+            Response->add_values(i.second);
         }
-        //if ip_adress has special symbol at back ('N'), it means server need to estabilish connection with client and save its adress;
-        else {
-            adress_request.pop_back();
-            //Debug info to signalize new server that need connection
-            std::cout << "Wow new ip - haven't seen it before - " << adress_request << std::endl;
+        for (const auto& i : Storage_.GetAddresses()) {
+            std::cout << "IP: " << i << std::endl;
+            Response->add_ip_adresses(i);
         }
-        grpc_client_.EstabilishConnection(adress_request);
-        storage_.AddReplicaAdress(adress_request);
+        //Estabilish connection and save ip of replica
+        gRPC_Client_.EstabilishConnection(Address_Request);
+        Storage_.AddReplicaAddress(Address_Request);
         return Status::OK;
     }
 
     //Returns result of adding new element in storage
-    Status ReplicateEntry(ServerContext* context, const ReplicateEntryRequest* request, ReplicateEntryResponse* response) {
-        bool insertion_result = storage_.AddEntry(request->key(), request->value());
-        response->set_result(insertion_result);
+    Status ReplicateEntry(ServerContext* Context, const ReplicateEntryRequest* Request, ReplicateEntryResponse* Response) {
+        bool Insertion_Result = Storage_.AddEntry(Request->key(), Request->value());
+        Response->set_result(Insertion_Result);
+        return Status::OK;
+    }
+
+    Status InformCluster(ServerContext* Context, const InformClusterRequest* Request, InformClusterResponse* Response){
+        //Takes ip_adress from request
+        std::string Address_Request = Request->ip_adress();
+
+        //Debug info to signalize new server that need connection
+        std::cout << "Wow new ip - haven't seen it before - " << Address_Request << std::endl;
+
+        //Estabilish connection and save ip of replica
+        gRPC_Client_.EstabilishConnection(Address_Request);
+        Storage_.AddReplicaAddress(Address_Request);
+        Response->set_result(true);
         return Status::OK;
     }
 
     //Creates instance of gRPC server and running it (blocks thread)
     void RunService() {
-        ServerBuilder builder;
-        builder.AddListeningPort(ip_adress_, grpc::InsecureServerCredentials());
-        builder.RegisterService(this);
-        std::unique_ptr<Server> server(builder.BuildAndStart());
+        ServerBuilder Builder;
+        Builder.AddListeningPort(Ip_Address_, grpc::InsecureServerCredentials());
+        Builder.RegisterService(this);
+        std::unique_ptr<Server> server(Builder.BuildAndStart());
         server->Wait();
     }
-
-private:
-    KeyValueStorage& storage_;
-    KeyValueClient& grpc_client_;
-    std::string ip_adress_;
 };
