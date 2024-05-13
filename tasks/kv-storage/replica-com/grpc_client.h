@@ -11,38 +11,42 @@ using grpc::Channel;
 
 
 class KeyValueClient {
+private:
+    KeyValueStorage& Storage_;
+    std::string gRPC_Address_;
+    std::list<KeyValueGRPC::Stub> Current_Connections_;
 public:
 
-    KeyValueClient(KeyValueStorage& storage, std::string_view grpc_adress)
-        : storage_(storage)
+    KeyValueClient(KeyValueStorage& Storage, const std::string& gRPC_Address)
+        : Storage_(Storage)
     {
-        grpc_adress_ = grpc_adress;
+        gRPC_Address_ = gRPC_Address;
     }
 
 private:
     
     //Asks every known gRPC server to open a channel with Client's instance
     void InformCluster() {
-        JoinClusterRequest request;
-        JoinClusterResponse response;
+        InformClusterRequest Request;
+        InformClusterResponse Response;
 
         //Set special symbol at end of adress to point that request is not asking for copying storage.
-        request.set_ip_adress(grpc_adress_ + 'N');
-        auto it = current_connections.begin();
+        Request.set_ip_adress(gRPC_Address_);
+        auto it = Current_Connections_.begin();
 
         //Increase iterator because begin() points to a replica that has already been connected
         it++;
 
-        while (it != current_connections.end()) {
+        while (it != Current_Connections_.end()) {
 
-            ClientContext context;
+            ClientContext Context;
             //Sends request
-            Status status = (*it).first.JoinCluster(&context, request, &response);
+            Status Status = (*it).InformCluster(&Context, Request, &Response);
 
-            if (!status.ok()) {
+            if (!Status.ok()) {
                 //erase() method returns next iterator after deleted iterator. Delete adress from storage_.
-                it = current_connections.erase(it);
-                storage_.DeleteReplicaAdress(context.peer());
+                it = Current_Connections_.erase(it);
+                Storage_.DeleteReplicaAddress(Context.peer());
 
                 //No need to increment iterator because of erase() method
                 continue;
@@ -53,45 +57,45 @@ private:
 
 public:
     //Creates new gRPC's connection to given instance
-    void EstabilishConnection(const std::string& ip_adress) {
-        auto new_channel = grpc::CreateChannel(ip_adress, grpc::InsecureChannelCredentials());
-        KeyValueGRPC::Stub new_stub(new_channel);
-        current_connections.push_back({ new_stub, new_channel });
+    void EstabilishConnection(const std::string& Ip_address) {
+        auto New_Channel = grpc::CreateChannel(Ip_address, grpc::InsecureChannelCredentials());
+        KeyValueGRPC::Stub New_Stub(New_Channel);
+        Current_Connections_.push_back(New_Stub);
     }
 
     //Sends gRPC's request to copy new Entry from HTTP server to every instance of known gRPC servers
-    void CopyEntry(std::string_view key, std::string_view value) {
+    void CopyEntry(const std::string& Key, const std::string& Value) {
 
         //Forms info for request
-        ReplicateEntryRequest request;
-        ReplicateEntryResponse response;
+        ReplicateEntryRequest Request;
+        ReplicateEntryResponse Response;
 
         //Points at first element of current_connections
-        auto it = current_connections.begin();
+        auto it = Current_Connections_.begin();
 
         //Iterates through every connection and sends data
-        while (it != current_connections.end()) {
+        while (it != Current_Connections_.end()) {
             //Setting info to send
-            ClientContext context;
-            request.set_key(key);
-            request.set_value(value);
+            ClientContext Context;
+            Request.set_key(Key);
+            Request.set_value(Value);
 
-            Status status = (*it).first.ReplicateEntry(&context, request, &response);
+            Status Status = (*it).ReplicateEntry(&Context, Request, &Response);
             
             //If connection is lost - deletes it. Deletion happens locally.
-            if (!status.ok()) {
+            if (!Status.ok()) {
 
                 //Debug info 
-                std::cout << "List size: " << current_connections.size() << std::endl;
-                std::cout << "One of replicas was shut down. " << context.peer() << std::endl;
+                std::cout << "List size: " << Current_Connections_.size() << std::endl;
+                std::cout << "One of replicas was shut down. " << Context.peer() << std::endl;
                 std::cout << "Starting deletion" << std::endl;
 
                 //erase() method returns next iterator after deleted iterator. Delete adress from storage_.
-                it = current_connections.erase(it);
-                storage_.DeleteReplicaAdress(context.peer());
+                it = Current_Connections_.erase(it);
+                Storage_.DeleteReplicaAddress(Context.peer());
 
                 std::cout << "Other connections left: ";
-                for (auto j : storage_.getAdresses()) {
+                for (auto j : Storage_.GetAddresses()) {
                     std::cout << j << std::endl;
                 }
                 std::cout << std::endl;
@@ -104,51 +108,46 @@ public:
     }
 
     //Create's connection to given gRPC server and replicate all data from it(if given). Calls InformCluster.
-    void CopyClusterInfo(const std::string& joinReplicaAddr) {
+    void CopyClusterInfo(const std::string& JoinReplicaAddr) {
 
         //Returns if no Replica's adress is given
-        if (joinReplicaAddr == "") {
+        if (JoinReplicaAddr == "") {
             return;
         }
 
         //Creating connection with given replica instance 
-        auto ReplicaChannel = grpc::CreateChannel(joinReplicaAddr, grpc::InsecureChannelCredentials());
+        auto ReplicaChannel = grpc::CreateChannel(JoinReplicaAddr, grpc::InsecureChannelCredentials());
         KeyValueGRPC::Stub ReplicaStub(ReplicaChannel);
 
         //Forms data to send request
-        ClientContext context;
-        JoinClusterRequest request;
-        request.set_ip_adress(grpc_adress_);
-        JoinClusterResponse response;
+        ClientContext Context;
+        JoinClusterRequest Request;
+        Request.set_ip_adress(gRPC_Address_);
+        JoinClusterResponse Response;
 
         //Sends request
-        Status status = ReplicaStub.JoinCluster(&context, request, &response);
+        Status Status = ReplicaStub.JoinCluster(&Context, Request, &Response);
 
         //Without estabilished connection with replica throws exception
-        if (!status.ok()) {
-            throw std::invalid_argument("Wrong adress of replica!");
+        if (!Status.ok()) {
+            throw std::invalid_argument("Wrong address of replica!");
         }
 
         //If conntection is succesfull - saving Stub and channel for future requests. Saving ip-adress of replica to send it by request later to new replica
-        current_connections.push_back({ ReplicaStub, ReplicaChannel });
-        storage_.AddReplicaAdress(joinReplicaAddr);
+        Current_Connections_.push_back(ReplicaStub);
+        Storage_.AddReplicaAddress(JoinReplicaAddr);
 
         //Fill kv-storage with key, values and ip-adresses of servers
-        for (const auto& i : response.keys()) {
-            for (const auto& j : response.values()) {
-                storage_.AddEntry(i, j);
+        for (const auto& i : Response.keys()) {
+            for (const auto& j : Response.values()) {
+                Storage_.AddEntry(i, j);
             }
         }
-        for (const auto& i : response.ip_adresses()) {
+        for (const auto& i : Response.ip_adresses()) {
             EstabilishConnection(i);
-            storage_.AddReplicaAdress(i);
+            Storage_.AddReplicaAddress(i);
         }
         //Call function to send its own ip to every known server
         InformCluster();
     }
-
-private:
-    KeyValueStorage& storage_;
-    std::string grpc_adress_;
-    std::list<std::pair<KeyValueGRPC::Stub, std::shared_ptr<Channel>>> current_connections;
 };
