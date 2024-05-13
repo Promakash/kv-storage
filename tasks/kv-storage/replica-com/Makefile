@@ -7,19 +7,21 @@ build_app:
 	cmake --build .
 
 clear_processes:
-	-killall replica_com || true
-	-killall replica_com || true
+	killall replica_com
+	killall replica_com
 
 test_communication: build_app
-	pytest test_communication.py
+	pytest Tests.py::Tests::test_communication
 	$(MAKE) clear_processes
 
 test_replication: build_app
-	pytest test_replication.py
+	pytest Tests.py::Tests::test_replication
 	$(MAKE) clear_processes
 
 test_fall_replica: build_app
-	pytest test_fall_replica.py
+	pytest Tests.py::Tests::test_fall_replica
 	$(MAKE) clear_processes
 
-test_all: test_communication test_replication test_fall_replica
+test_all: 
+	pytest Tests.py::Tests
+	$(MAKE) clear_processes
