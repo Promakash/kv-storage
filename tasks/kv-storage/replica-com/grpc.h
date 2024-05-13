@@ -61,12 +61,14 @@ public:
         //Takes ip_adress from request
         std::string Address_Request = Request->ip_adress();
 
-        //Debug info to signalize new server that need connection
-        std::cout << "Wow new ip - haven't seen it before - " << Address_Request << std::endl;
-
         //Estabilish connection and save ip of replica
-        gRPC_Client_.EstabilishConnection(Address_Request);
-        Storage_.AddReplicaAddress(Address_Request);
+        //if address already in set it means stub with this address is created and no need to make it again
+        if (Storage_.FindAddress(Address_Request) == false){
+            //Debug info to signalize new server that need connection
+            std::cout << "Wow new ip - haven't seen it before - " << Address_Request << std::endl;
+            gRPC_Client_.EstabilishConnection(Address_Request);
+            Storage_.AddReplicaAddress(Address_Request);
+        }
         Response->set_result(true);
         return Status::OK;
     }
