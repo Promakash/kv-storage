@@ -34,11 +34,19 @@ public:
         }
         for (const auto& i : Storage_.GetAddresses()) {
             std::cout << "IP: " << i << std::endl;
+            //To evade connection of new replica to itself
+            if (Address_Request == i){
+                continue;
+            }
             Response->add_ip_adresses(i);
         }
+        
         //Estabilish connection and save ip of replica
-        gRPC_Client_.EstabilishConnection(Address_Request);
-        Storage_.AddReplicaAddress(Address_Request);
+        //if address already in set it means stub with this address is created and no need to make it again
+        if (Storage_.FindAddress(Address_Request) == false){
+            gRPC_Client_.EstabilishConnection(Address_Request);
+            Storage_.AddReplicaAddress(Address_Request);
+        }
         return Status::OK;
     }
 

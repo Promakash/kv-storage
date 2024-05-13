@@ -52,19 +52,27 @@ public:
         return {true, Result};
     }
 
-    //Returns set of adresses of gRPC servers
+    //Returns set of addresses of gRPC servers
     std::unordered_set<std::string> GetAddresses(){
         return Addresses_;
     }
 
-    //Adds new adress to set of gRPC servers
+    //Adds new address to set of gRPC servers
     void AddReplicaAddress(const std::string& Address){
         Addresses_.insert(Address);
     }
 
-    //Removes adress from set of gRPC servers
+    //Removes address from set of gRPC servers
     void DeleteReplicaAddress(const std::string& Address){
         Addresses_.erase(Address);
+    }
+
+    //Searches for address in set
+    bool FindAddress(const std::string& Address){
+        if (Addresses_.find(Address) == Addresses_.end()){
+            return false;
+        }
+        return true;
     }
 
     Iterator begin(){
