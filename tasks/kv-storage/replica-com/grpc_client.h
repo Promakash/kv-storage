@@ -138,10 +138,10 @@ public:
         Storage_.AddReplicaAddress(JoinReplicaAddr);
 
         //Fill kv-storage with key, values and ip-adresses of servers
-        for (const auto& i : Response.keys()) {
-            for (const auto& j : Response.values()) {
-                Storage_.AddEntry(i, j);
-            }
+        auto Values_Iterator = Response.values().cbegin();
+        for (const auto& Keys_Iterator : Response.keys()) {
+            Storage_.AddEntry(Keys_Iterator,(*Values_Iterator));
+            Values_Iterator++;
         }
         for (const auto& i : Response.ip_adresses()) {
             EstabilishConnection(i);
