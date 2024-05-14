@@ -3,7 +3,6 @@ build_and_launch_server:
 	cd build && \
 	cmake .. && \
 	cmake --build .
-	build/client_com
 
 test: build_and_launch_server
-	pytest
+	build/client_com & pytest test.py

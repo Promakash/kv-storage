@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 SET(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+SET(CMAKE_CXX_STANDARD 17)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -11,7 +12,7 @@ FetchContent_MakeAvailable(argparse)
 
 find_package(Protobuf CONFIG REQUIRED)
 
-option(USE_SYSTEM_GRPC "Use system installed gRPC" ON)
+option(USE_SYSTEM_GRPC "Use system installed gRPC" ON) #SET OFF IF YOU HAVEN'T GOT gRPC
 
 if(USE_SYSTEM_GRPC)
   find_package(gRPC CONFIG REQUIRED)
