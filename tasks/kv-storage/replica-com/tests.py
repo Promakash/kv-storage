@@ -7,16 +7,20 @@ import requests
 import subprocess
 import time
 
-class Tests:
+class TestServer:
 
     def check_server(self, address):
-        
+        #30s to build the server
+        k = 6
         while True:
             try:
+                k-=1
                 resp = requests.get(f'{address}/readiness')
                 if (resp.status_code == 200):
                     break
             except:
+                assert k != 0, "Server hasn't started - time limit exceeded"
+                time.sleep(5)
                 continue
 
     def init_servers(self, servers, count):
@@ -24,10 +28,11 @@ class Tests:
         servers = ["http://localhost:11111", "http://localhost:33333", "http://localhost:55555"]
         servers_processes = []
         #Clear all proccess in case of previous test failing
-        proccess1 = subprocess.Popen(['killall', 'replica_com'])
-        proccess2 = subprocess.Popen(['killall', 'replica_com'])
-        while (proccess1.poll() is None and proccess2.poll() is None):
-            continue
+        #Need to killall two times because of 2 threads in program
+        for i in range(2):
+            server_proc = subprocess.Popen(['killall', 'replica_com'])
+            while (server_proc.poll() is None):
+                continue
 
         #Start original server
         serverid_1 = subprocess.Popen(['build/replica_com', '11111', '22222'])
