@@ -11,17 +11,17 @@ clear_processes:
 	killall replica_com
 
 test_communication: build_app
-	pytest Tests.py::Tests::test_communication
+	pytest tests.py::TestServer::test_communication
 	$(MAKE) clear_processes
 
 test_replication: build_app
-	pytest Tests.py::Tests::test_replication
+	pytest tests.py::TestServer::test_replication
 	$(MAKE) clear_processes
 
 test_fall_replica: build_app
-	pytest Tests.py::Tests::test_fall_replica
+	pytest tests.py::TestServer::test_fall_replica
 	$(MAKE) clear_processes
 
-test_all: 
-	pytest Tests.py::Tests
+test_all: build_app
+	pytest tests.py::TestServer
 	$(MAKE) clear_processes
